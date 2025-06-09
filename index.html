@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Vacation Vault Club | Chatbot</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: linear-gradient(to bottom, #fefcea, #d6f3ff);
+      height: 100vh;
+    }
+    #chatbot-container {
+      position: fixed;
+      bottom: 20px;
+      right: 20px;
+      width: 320px;
+      max-height: 600px;
+      border-radius: 20px;
+      box-shadow: 0 8px 20px rgba(0, 0, 0, 0.2);
+      overflow: hidden;
+      background-color: #fff;
+      display: flex;
+      flex-direction: column;
+      z-index: 9999;
+    }
+    .chat-header {
+      background-image: url('https://vacationvault-chat.s3.amazonaws.com/vacation_header.png');
+      background-size: cover;
+      background-position: center;
+      height: 100px;
+      flex-shrink: 0;
+    }
+    .chat-body {
+      padding: 10px;
+      overflow-y: auto;
+      flex-grow: 1;
+      background-image: url('https://i.imgur.com/zoT2kbP.png');
+      background-size: cover;
+      background-repeat: no-repeat;
+      background-position: center;
+    }
+    .chat-footer {
+      display: flex;
+      border-top: 1px solid #ddd;
+      padding: 10px;
+      gap: 8px;
+      background-color: #f5f5f5;
+    }
+    .chat-footer input {
+      flex: 1;
+      padding: 8px;
+      border: 1px solid #ccc;
+      border-radius: 8px;
+    }
+    .chat-footer button {
+      background-color: #00bfa6;
+      color: white;
+      border: none;
+      padding: 8px 12px;
+      border-radius: 8px;
+      cursor: pointer;
+    }
+    .message {
+      margin: 10px 0;
+      padding: 10px;
+      border-radius: 10px;
+      max-width: 90%;
+      line-height: 1.4;
+    }
+    .bot-message {
+      background-color: #fff9e5;
+      border-left: 4px solid #00bfa6;
+    }
+    .user-message {
+      background-color: #dff0ea;
+      align-self: flex-end;
+    }
+    .typing {
+      font-style: italic;
+      color: #888;
+      margin: 5px 0;
+    }
+    .button-bar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 5px;
+      margin-top: 10px;
+    }
+    .button-bar button {
+      flex: 1 1 30%;
+      background-color: #00bfa6;
+      color: white;
+      border: none;
+      padding: 6px 8px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 12px;
+    }
+    @media (max-width: 600px) {
+      #chatbot-container {
+        width: 95%;
+        right: 2.5%;
+        bottom: 10px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div id="chatbot-container">
+    <div class="chat-header"></div>
+    <div class="chat-body" id="chat-body">
+      <div class="message bot-message">🌴 Aloha! I'm your Club Service Admin. How can I help you today?</div>
+    </div>
+    <div class="chat-footer">
+      <input type="text" id="user-input" placeholder="Type here..." onkeypress="if(event.key === 'Enter'){sendMessage()}" />
+      <button onclick="sendMessage()">Send</button>
+    </div>
+    <div class="button-bar">
+      <button onclick="quickReply('Membership')">Membership</button>
+      <button onclick="quickReply('Contact')">Contact</button>
+      <button onclick="quickReply('About')">About</button>
+      <button onclick="quickReply('Refund')">Refund</button>
+      <button onclick="quickReply('Terms')">Terms</button>
+      <button onclick="quickReply('Privacy')">Privacy</button>
+      <button onclick="quickReply('Booking')">Booking</button>
+    </div>
+  </div>
+
+  <script>
+    let userData = { name: '', email: '', phone: '', stage: null };
+    const FORM_ENDPOINT = 'https://formspree.io/f/xnnvjkej';
+
+    function sendMessage() {
+      const input = document.getElementById('user-input');
+      const message = input.value.trim();
+      if (!message) return;
+      appendMessage(message, 'user');
+      input.value = '';
+
+      if (userData.stage === 'name') {
+        userData.name = message;
+        userData.stage = 'email';
+        showTyping(() => appendMessage("Awesome, what's the best email to reach you at?", 'bot'));
+        return;
+      }
+      if (userData.stage === 'email') {
+        userData.email = message;
+        userData.stage = 'phone';
+        showTyping(() => appendMessage("Thanks! Lastly, your phone number?", 'bot'));
+        return;
+      }
+      if (userData.stage === 'phone') {
+        userData.phone = message;
+        userData.stage = null;
+        showTyping(() => appendMessage("📬 Got it! A concierge agent will follow up with you soon.", 'bot'));
+        fetch(FORM_ENDPOINT, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+          body: new URLSearchParams(userData).toString()
+        });
+        return;
+      }
+
+      respondToUser(message);
+    }
+
+    function appendMessage(text, sender) {
+      const msg = document.createElement('div');
+      msg.className = `message ${sender}-message`;
+      msg.innerHTML = text;
+      document.getElementById('chat-body').appendChild(msg);
+      document.getElementById('chat-body').scrollTop = document.getElementById('chat-body').scrollHeight;
+    }
+
+    function showTyping(callback) {
+      const typing = document.createElement('div');
+      typing.className = 'typing';
+      typing.innerText = 'Typing...';
+      document.getElementById('chat-body').appendChild(typing);
+      setTimeout(() => {
+        typing.remove();
+        callback();
+      }, 800);
+    }
+
+    function quickReply(label) {
+      appendMessage(label, 'user');
+      respondToUser(label);
+    }
+
+    function respondToUser(input) {
+      const responses = {
+        'Membership': "🏖️ Learn more or become a member here: <a href='https://vacationvaultclub.com/join-now' target='_blank'>Join Now</a>.",
+        'Contact': "📞 Reach our team here: <a href='https://vacationvaultclub.com/Contact' target='_blank'>Contact Us</a>.",
+        'About': "🌞 Discover who we are: <a href='https://vacationvaultclub.com/About' target='_blank'>About Us</a>.",
+        'Refund': "💸 Read our refund policy: <a href='https://vacationvaultclub.com/page-18167' target='_blank'>Refund Policy</a>.",
+        'Terms': "📜 Terms of Use: <a href='https://vacationvaultclub.com/page-18071' target='_blank'>Terms of Use</a>.",
+        'Privacy': "🔐 Privacy Policy: <a href='https://vacationvaultclub.com/Privacy-Policy' target='_blank'>Privacy Policy</a>.",
+        'Booking': "✈️ I'd love to help you book a trip. May I have your name to get started?",
+        'default': "🤔 Hmm, I'm not sure I understood that. Try clicking a button below to help me assist you!"
+      };
+
+      const lower = input.toLowerCase();
+      const triggers = ['book', 'sign up', 'join', 'cancel', 'membership', 'call', 'agent'];
+      if (triggers.some(trigger => lower.includes(trigger))) {
+        if (!userData.name) {
+          userData.stage = 'name';
+          showTyping(() => appendMessage("✈️ I'd love to help! May I please have your name to get started?", 'bot'));
+          return;
+        }
+      }
+
+      const reply = responses[input] || responses['default'];
+      showTyping(() => appendMessage(reply, 'bot'));
+    }
+  </script>
+</body>
+</html>
