@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -171,19 +170,10 @@
       <button onclick="sendMessage()">Send</button>
     </div>
     <div class="button-bar">
-      <button onclick="quickReply('Membership')">Membership</button>
+      
       <button onclick="quickReply('Contact')">Contact</button>
-      <button onclick="quickReply('About')">About</button>
-      <button onclick="quickReply('Refund')">Refund</button>
-      <button onclick="quickReply('Terms')">Terms</button>
-      <button onclick="quickReply('Privacy')">Privacy</button>
-      <button onclick="quickReply('Cancel')">Cancel</button>
       <button onclick="quickReply('Booking')">Booking</button>
       <button onclick="quickReply('Quote')">Quote</button>
-      <button onclick="quickReply('Insurance')">Insurance</button>
-      <button onclick="quickReply('Join Journey Mate')">Join Journey Mate</button>
-      <button onclick="quickReply('Share Membership')">Share Membership</button>
-      <button onclick="quickReply('Fee Refund')">Fee Refund</button>
       <button onclick="quickReply('Other')">Other</button>
     </div>
   </div>
@@ -197,16 +187,18 @@
       const input = document.getElementById('user-input');
       const message = input.value.trim();
       if (!message) return;
-      appendMessage(message, 'user');
+      appendMessage(message, 'user'); // Append original message for display
       input.value = '';
 
       // Custom form flow for Quote and Other
       if (userStage) {
-        handleFormFlow(message);
+        // Pass the lowercase message to handleFormFlow
+        handleFormFlow(message.toLowerCase());
         return;
       }
 
-      respondToUser(message);
+      // Pass the lowercase message for initial command recognition
+      respondToUser(message.toLowerCase());
     }
 
     function appendMessage(text, sender) {
@@ -219,34 +211,35 @@
 
     function quickReply(label) {
       appendMessage(label, 'user');
-      respondToUser(label);
+      // Quick replies should also trigger a lowercase response for consistency
+      respondToUser(label.toLowerCase());
     }
 
-    function respondToUser(input) {
+    function respondToUser(input) { // input is already lowercased here
       const responses = {
-        'Membership': "🏖️ Learn more or become a member here: <a href='https://vacationvaultclub.com/join-now' target='_blank'>Join Now</a>.",
-        'Contact': "📞 Reach our team here: <a href='https://vacationvaultclub.com/Contact' target='_blank'>Contact Us</a>.",
-        'About': "🌞 Discover who we are: <a href='https://vacationvaultclub.com/About' target='_blank'>About Us</a>.",
-        'Refund': "💸 Read our refund policy: <a href='https://vacationvaultclub.com/page-18167' target='_blank'>Refund Policy</a>.",
-        'Terms': "📜 Terms of Use: <a href='https://vacationvaultclub.com/page-18071' target='_blank'>Terms of Use</a>.",
-        'Privacy': "🔐 Privacy Policy: <a href='https://vacationvaultclub.com/Privacy-Policy' target='_blank'>Privacy Policy</a>.",
-        'Booking': "📌 You must be a member to access your personal booking portal. If you are a member, go to your member profile and click your booking portal link at the top of the page.",
-        'Cancel': "😢 We're sorry to see you go! To cancel, email <a href='mailto:clubservices@vacationvaultclub.com'>clubservices@vacationvaultclub.com</a> with the subject line CANCEL.",
-        'Insurance': "🛡️ Travel insurance is available through our affiliate partner Allianz at low premium rates.",
-        'Join Journey Mate': "🔗 Once you log in, click on the Journey Mate link.",
-        'Share Membership': "🚫 No, memberships cannot be shared. Reservations made under a different name are not valid and may result in termination.",
-        'Fee Refund': "💳 Membership fees are non-refundable.",
-        'Quote': () => {
+        'membership': "🏖️ Learn more or become a member here: <a href='https://vacationvaultclub.com/join-now' target='_blank'>Join Now</a>.",
+        'contact': "📞 Reach our team here: <a href='https://vacationvaultclub.com/Contact' target='_blank'>Contact Us</a>.",
+        'about': "🌞 Discover who we are: <a href='https://vacationvaultclub.com/About' target='_blank'>About Us</a>.",
+        'refund': "💸 Read our refund policy: <a href='https://vacationvaultclub.com/page-18167' target='_blank'>Refund Policy</a>.",
+        'terms': "📜 Terms of Use: <a href='https://vacationvaultclub.com/page-18071' target='_blank'>Terms of Use</a>.",
+        'privacy': "🔐 Privacy Policy: <a href='https://vacationvaultclub.com/Privacy-Policy' target='_blank'>Privacy Policy</a>.",
+        'booking': "📌 You must be a member to access your personal booking portal. If you are a member, go to your member profile and click your booking portal link at the top of the page.",
+        'cancel': "😢 We're sorry to see you go! To cancel, email <a href='mailto:clubservices@vacationvaultclub.com'>clubservices@vacationvaultclub.com</a> with the subject line CANCEL.",
+        'insurance': "🛡️ Travel insurance is available through our affiliate partner Allianz at low premium rates.",
+        'join journey mate': "🔗 Once you log in, click on the Journey Mate link.",
+        'share membership': "🚫 No, memberships cannot be shared. Reservations made under a different name are not valid and may result in termination.",
+        'fee refund': "💳 Membership fees are non-refundable.",
+        'quote': () => {
           userStage = 'quote_name';
           formData = {};
           appendMessage("💌 I’d love to help you get a quote! Let's start with your full name:", 'bot');
         },
-        'Other': () => {
-          userStage = 'other_contact_preference'; // New stage for contact preference
+        'other': () => {
+          userStage = 'other_contact_preference';
           formData = {};
           appendMessage("📩 Sure! Would you prefer we contact you by email or phone? (Type 'Email' or 'Phone')", 'bot');
         },
-        'default': "🤔 Hmm, I'm not sure I understood that. Try clicking a button below to help me assist you!"
+        'default': "🤔 Hmm, I'm not sure I understood that. Try typing words like 'Membership' or 'Insurance' below to help me assist you!"
       };
 
       const reply = responses[input] || responses['default'];
@@ -258,55 +251,63 @@
       }
     }
 
-    function handleFormFlow(message) {
+    function handleFormFlow(message) { // message is already lowercased here
       switch (userStage) {
         case 'quote_name':
-          formData.name = message;
+          // You might want to store names with proper casing, not lowercase.
+          // For now, storing as-is (lowercase from input) or consider message.toLowerCase() for comparison.
+          // For user-facing display or backend storage, you might want to capitalize names.
+          // Example: formData.name = message.split(' ').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
+          formData.name = message; // Stores the lowercase name
           userStage = 'quote_email';
           appendMessage("📧 Great! What is the best email to send your quote to?", 'bot');
           break;
         case 'quote_email':
-          formData.email = message;
+          formData.email = message; // Stores the lowercase email
           userStage = 'quote_destination';
           appendMessage("📍 What's the destination?", 'bot');
           break;
         case 'quote_destination':
-          formData.destination = message;
+          formData.destination = message; // Stores the lowercase destination
           userStage = 'quote_dates';
           appendMessage("📅 What dates are you planning to travel?", 'bot');
           break;
         case 'quote_dates':
-          formData.dates = message;
+          formData.dates = message; // Stores the lowercase dates
           userStage = 'quote_flex';
           appendMessage("🌀 Are your dates flexible (day before or after)?", 'bot');
           break;
         case 'quote_flex':
+          // Compare 'yes' or 'no' case-insensitively, store as-is
           formData.flexible = message;
           userStage = 'quote_party';
           appendMessage("👨‍👩‍👧‍👦 How many people in your party?", 'bot');
           break;
         case 'quote_party':
-          formData.partySize = message;
+          formData.partySize = message; // Stores the lowercase party size
           userStage = 'quote_ada';
           appendMessage("♿ Do you need ADA accessible services?", 'bot');
           break;
         case 'quote_ada':
+          // Compare 'yes' or 'no' case-insensitively, store as-is
           formData.ada = message;
           userStage = 'quote_flight';
           appendMessage("✈️ Do you need flights included?", 'bot');
           break;
         case 'quote_flight':
+          // Compare 'yes' or 'no' case-insensitively, store as-is
           formData.flight = message;
           userStage = 'quote_car';
           appendMessage("🚗 Do you need a rental car?", 'bot');
           break;
         case 'quote_car':
+          // Compare 'yes' or 'no' case-insensitively, store as-is
           formData.rental = message;
           userStage = 'quote_activities';
           appendMessage("🏝️ Any excursions or activities you'd like to include?", 'bot');
           break;
         case 'quote_activities':
-          formData.activities = message;
+          formData.activities = message; // Stores the lowercase activities
           fetch(FORM_ENDPOINT, {
             method: 'POST',
             headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
@@ -317,13 +318,13 @@
           break;
 
         case 'other_contact_preference':
-          const preference = message.toLowerCase();
-          if (preference === 'email') {
-            formData.contactPreference = 'Email';
+          // 'message' is already lowercased here
+          if (message === 'email') {
+            formData.contactPreference = 'Email'; // Storing 'Email' with initial cap for consistency
             userStage = 'other_question_email';
             appendMessage("📝 Sure! What questions may I relay to our Vault team? Please include your name and your email address in your message.", 'bot');
-          } else if (preference === 'phone') {
-            formData.contactPreference = 'Phone';
+          } else if (message === 'phone') {
+            formData.contactPreference = 'Phone'; // Storing 'Phone' with initial cap for consistency
             userStage = 'other_phone_number';
             appendMessage("📱 What's the best phone number to reach you?", 'bot');
           } else {
@@ -332,20 +333,19 @@
           break;
 
         case 'other_phone_number':
-          formData.phoneNumber = message;
+          formData.phoneNumber = message; // Stores the lowercase phone number
           userStage = 'other_call_time';
           appendMessage("⏰ What’s the best time to call you?", 'bot');
           break;
 
         case 'other_call_time':
-          formData.callTime = message;
+          formData.callTime = message; // Stores the lowercase call time
           userStage = 'other_question_phone';
           appendMessage("📝 Please describe your question. You can also include your name if you haven't already.", 'bot');
           break;
 
         case 'other_question_email':
-          formData.question = message;
-          // Submit the form for email preference
+          formData.question = message; // Stores the lowercase question
           fetch(FORM_ENDPOINT, {
             method: 'POST',
             headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
@@ -356,8 +356,7 @@
           break;
 
         case 'other_question_phone':
-          formData.question = message;
-          // Submit the form for phone preference
+          formData.question = message; // Stores the lowercase question
           fetch(FORM_ENDPOINT, {
             method: 'POST',
             headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
