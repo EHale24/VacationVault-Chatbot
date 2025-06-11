@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -25,13 +26,45 @@
       display: flex;
       flex-direction: column;
       z-index: 9999;
+      transition: all 0.3s ease-in-out; /* Added for smooth minimize/maximize */
     }
+    #chatbot-container.minimized {
+      width: 60px;
+      height: 60px;
+      border-radius: 50%;
+      bottom: 20px;
+      right: 20px;
+      box-shadow: 0 8px 20px rgba(0, 0, 0, 0.2);
+      overflow: hidden; /* Hide content when minimized */
+    }
+    #chatbot-container.minimized .chat-header,
+    #chatbot-container.minimized .chat-body,
+    #chatbot-container.minimized .chat-footer,
+    #chatbot-container.minimized .button-bar {
+      display: none;
+    }
+    #chatbot-container.minimized #minimize-button {
+      display: none; /* Hide minimize button when minimized */
+    }
+    #chatbot-container.minimized #maximize-button {
+      display: flex; /* Show maximize button when minimized */
+      align-items: center;
+      justify-content: center;
+      width: 100%;
+      height: 100%;
+      background-color: #00bfa6; /* Adjust color as needed */
+      color: white;
+      font-size: 24px;
+      cursor: pointer;
+    }
+
     .chat-header {
       background-image: url('https://vacationvault-chat.s3.amazonaws.com/vacation_header.png');
       background-size: cover;
       background-position: center;
       height: 100px;
       flex-shrink: 0;
+      position: relative; /* Added for button positioning */
     }
     .chat-body {
       padding: 10px;
@@ -78,16 +111,13 @@
       background-color: #dff0ea;
       align-self: flex-end;
     }
-    .typing {
-      font-style: italic;
-      color: #888;
-      margin: 5px 0;
-    }
     .button-bar {
       display: flex;
       flex-wrap: wrap;
       gap: 5px;
       margin-top: 10px;
+      padding: 10px; /* Added padding for better spacing */
+      background-color: #f5f5f5; /* Added background for consistency */
     }
     .button-bar button {
       flex: 1 1 30%;
@@ -99,18 +129,40 @@
       cursor: pointer;
       font-size: 12px;
     }
-    @media (max-width: 600px) {
-      #chatbot-container {
-        width: 95%;
-        right: 2.5%;
-        bottom: 10px;
-      }
+    #minimize-button {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      background: none;
+      border: none;
+      color: white; /* Changed color to white for contrast on header image */
+      font-size: 24px;
+      cursor: pointer;
+      z-index: 10000;
+    }
+    #maximize-button {
+      display: none; /* Hidden by default */
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background-color: #00bfa6;
+      color: white;
+      font-size: 24px;
+      border-radius: 50%;
+      cursor: pointer;
+      align-items: center;
+      justify-content: center;
     }
   </style>
 </head>
 <body>
   <div id="chatbot-container">
-    <div class="chat-header"></div>
+    <div class="chat-header">
+      <button id="minimize-button" onclick="toggleChatbot()">—</button>
+    </div>
+    <div id="maximize-button" onclick="toggleChatbot()">💬</div>
     <div class="chat-body" id="chat-body">
       <div class="message bot-message">🌴 Aloha! I'm your Club Service Admin. How can I help you today?</div>
     </div>
@@ -125,13 +177,21 @@
       <button onclick="quickReply('Refund')">Refund</button>
       <button onclick="quickReply('Terms')">Terms</button>
       <button onclick="quickReply('Privacy')">Privacy</button>
+      <button onclick="quickReply('Cancel')">Cancel</button>
       <button onclick="quickReply('Booking')">Booking</button>
+      <button onclick="quickReply('Quote')">Quote</button>
+      <button onclick="quickReply('Insurance')">Insurance</button>
+      <button onclick="quickReply('Join Journey Mate')">Join Journey Mate</button>
+      <button onclick="quickReply('Share Membership')">Share Membership</button>
+      <button onclick="quickReply('Fee Refund')">Fee Refund</button>
+      <button onclick="quickReply('Other')">Other</button>
     </div>
   </div>
 
   <script>
-    let userData = { name: '', email: '', phone: '', stage: null };
-    const FORM_ENDPOINT = 'https://formspree.io/f/xnnvjkej';
+    const FORM_ENDPOINT = "https://formspree.io/f/xnnvjkej";
+    let userStage = null;
+    let formData = {};
 
     function sendMessage() {
       const input = document.getElementById('user-input');
@@ -140,27 +200,9 @@
       appendMessage(message, 'user');
       input.value = '';
 
-      if (userData.stage === 'name') {
-        userData.name = message;
-        userData.stage = 'email';
-        showTyping(() => appendMessage("Awesome, what's the best email to reach you at?", 'bot'));
-        return;
-      }
-      if (userData.stage === 'email') {
-        userData.email = message;
-        userData.stage = 'phone';
-        showTyping(() => appendMessage("Thanks! Lastly, your phone number?", 'bot'));
-        return;
-      }
-      if (userData.stage === 'phone') {
-        userData.phone = message;
-        userData.stage = null;
-        showTyping(() => appendMessage("📬 Got it! A concierge agent will follow up with you soon.", 'bot'));
-        fetch(FORM_ENDPOINT, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-          body: new URLSearchParams(userData).toString()
-        });
+      // Custom form flow for Quote and Other
+      if (userStage) {
+        handleFormFlow(message);
         return;
       }
 
@@ -173,17 +215,6 @@
       msg.innerHTML = text;
       document.getElementById('chat-body').appendChild(msg);
       document.getElementById('chat-body').scrollTop = document.getElementById('chat-body').scrollHeight;
-    }
-
-    function showTyping(callback) {
-      const typing = document.createElement('div');
-      typing.className = 'typing';
-      typing.innerText = 'Typing...';
-      document.getElementById('chat-body').appendChild(typing);
-      setTimeout(() => {
-        typing.remove();
-        callback();
-      }, 800);
     }
 
     function quickReply(label) {
@@ -199,22 +230,148 @@
         'Refund': "💸 Read our refund policy: <a href='https://vacationvaultclub.com/page-18167' target='_blank'>Refund Policy</a>.",
         'Terms': "📜 Terms of Use: <a href='https://vacationvaultclub.com/page-18071' target='_blank'>Terms of Use</a>.",
         'Privacy': "🔐 Privacy Policy: <a href='https://vacationvaultclub.com/Privacy-Policy' target='_blank'>Privacy Policy</a>.",
-        'Booking': "✈️ I'd love to help you book a trip. May I have your name to get started?",
+        'Booking': "📌 You must be a member to access your personal booking portal. If you are a member, go to your member profile and click your booking portal link at the top of the page.",
+        'Cancel': "😢 We're sorry to see you go! To cancel, email <a href='mailto:clubservices@vacationvaultclub.com'>clubservices@vacationvaultclub.com</a> with the subject line CANCEL.",
+        'Insurance': "🛡️ Travel insurance is available through our affiliate partner Allianz at low premium rates.",
+        'Join Journey Mate': "🔗 Once you log in, click on the Journey Mate link.",
+        'Share Membership': "🚫 No, memberships cannot be shared. Reservations made under a different name are not valid and may result in termination.",
+        'Fee Refund': "💳 Membership fees are non-refundable.",
+        'Quote': () => {
+          userStage = 'quote_name';
+          formData = {};
+          appendMessage("💌 I’d love to help you get a quote! Let's start with your full name:", 'bot');
+        },
+        'Other': () => {
+          userStage = 'other_contact_preference'; // New stage for contact preference
+          formData = {};
+          appendMessage("📩 Sure! Would you prefer we contact you by email or phone? (Type 'Email' or 'Phone')", 'bot');
+        },
         'default': "🤔 Hmm, I'm not sure I understood that. Try clicking a button below to help me assist you!"
       };
 
-      const lower = input.toLowerCase();
-      const triggers = ['book', 'sign up', 'join', 'cancel', 'membership', 'call', 'agent'];
-      if (triggers.some(trigger => lower.includes(trigger))) {
-        if (!userData.name) {
-          userData.stage = 'name';
-          showTyping(() => appendMessage("✈️ I'd love to help! May I please have your name to get started?", 'bot'));
-          return;
-        }
-      }
-
       const reply = responses[input] || responses['default'];
-      showTyping(() => appendMessage(reply, 'bot'));
+
+      if (typeof reply === 'function') {
+        reply();
+      } else {
+        appendMessage(reply, 'bot');
+      }
+    }
+
+    function handleFormFlow(message) {
+      switch (userStage) {
+        case 'quote_name':
+          formData.name = message;
+          userStage = 'quote_email';
+          appendMessage("📧 Great! What is the best email to send your quote to?", 'bot');
+          break;
+        case 'quote_email':
+          formData.email = message;
+          userStage = 'quote_destination';
+          appendMessage("📍 What's the destination?", 'bot');
+          break;
+        case 'quote_destination':
+          formData.destination = message;
+          userStage = 'quote_dates';
+          appendMessage("📅 What dates are you planning to travel?", 'bot');
+          break;
+        case 'quote_dates':
+          formData.dates = message;
+          userStage = 'quote_flex';
+          appendMessage("🌀 Are your dates flexible (day before or after)?", 'bot');
+          break;
+        case 'quote_flex':
+          formData.flexible = message;
+          userStage = 'quote_party';
+          appendMessage("👨‍👩‍👧‍👦 How many people in your party?", 'bot');
+          break;
+        case 'quote_party':
+          formData.partySize = message;
+          userStage = 'quote_ada';
+          appendMessage("♿ Do you need ADA accessible services?", 'bot');
+          break;
+        case 'quote_ada':
+          formData.ada = message;
+          userStage = 'quote_flight';
+          appendMessage("✈️ Do you need flights included?", 'bot');
+          break;
+        case 'quote_flight':
+          formData.flight = message;
+          userStage = 'quote_car';
+          appendMessage("🚗 Do you need a rental car?", 'bot');
+          break;
+        case 'quote_car':
+          formData.rental = message;
+          userStage = 'quote_activities';
+          appendMessage("🏝️ Any excursions or activities you'd like to include?", 'bot');
+          break;
+        case 'quote_activities':
+          formData.activities = message;
+          fetch(FORM_ENDPOINT, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: new URLSearchParams(formData).toString()
+          });
+          appendMessage("📬 Great! Your quote will be sent to your email shortly!", 'bot');
+          userStage = null;
+          break;
+
+        case 'other_contact_preference':
+          const preference = message.toLowerCase();
+          if (preference === 'email') {
+            formData.contactPreference = 'Email';
+            userStage = 'other_question_email';
+            appendMessage("📝 Sure! What questions may I relay to our Vault team? Please include your name and your email address in your message.", 'bot');
+          } else if (preference === 'phone') {
+            formData.contactPreference = 'Phone';
+            userStage = 'other_phone_number';
+            appendMessage("📱 What's the best phone number to reach you?", 'bot');
+          } else {
+            appendMessage("🤔 I didn't catch that. Please type 'Email' or 'Phone'.", 'bot');
+          }
+          break;
+
+        case 'other_phone_number':
+          formData.phoneNumber = message;
+          userStage = 'other_call_time';
+          appendMessage("⏰ What’s the best time to call you?", 'bot');
+          break;
+
+        case 'other_call_time':
+          formData.callTime = message;
+          userStage = 'other_question_phone';
+          appendMessage("📝 Please describe your question. You can also include your name if you haven't already.", 'bot');
+          break;
+
+        case 'other_question_email':
+          formData.question = message;
+          // Submit the form for email preference
+          fetch(FORM_ENDPOINT, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: new URLSearchParams(formData).toString()
+          });
+          appendMessage("📬 Thanks! A Vault representative will follow up shortly by email.", 'bot');
+          userStage = null;
+          break;
+
+        case 'other_question_phone':
+          formData.question = message;
+          // Submit the form for phone preference
+          fetch(FORM_ENDPOINT, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: new URLSearchParams(formData).toString()
+          });
+          appendMessage("📬 Thanks! A Vault representative will follow up shortly by phone.", 'bot');
+          userStage = null;
+          break;
+      }
+    }
+
+    function toggleChatbot() {
+      const chatbotContainer = document.getElementById('chatbot-container');
+      chatbotContainer.classList.toggle('minimized');
     }
   </script>
 </body>
