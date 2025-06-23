@@ -179,25 +179,24 @@
   </div>
 
   <script>
+    // ** IMPORTANT: REPLACE YOUR_FORMSPREE_ENDPOINT_HERE with your actual Formspree form URL (e.g., https://formspree.io/f/yourformid) **
     const FORM_ENDPOINT = "https://formspree.io/f/xnnvjkej";
+
     let userStage = null;
-    let formData = {};
+    let formData = {}; // This will hold the chatbot's collected data
 
     function sendMessage() {
       const input = document.getElementById('user-input');
       const message = input.value.trim();
       if (!message) return;
-      appendMessage(message, 'user'); // Append original message for display
+      appendMessage(message, 'user');
       input.value = '';
 
-      // Custom form flow for Quote and Other
       if (userStage) {
-        // Pass the lowercase message to handleFormFlow
         handleFormFlow(message.toLowerCase());
         return;
       }
 
-      // Pass the lowercase message for initial command recognition
       respondToUser(message.toLowerCase());
     }
 
@@ -211,11 +210,10 @@
 
     function quickReply(label) {
       appendMessage(label, 'user');
-      // Quick replies should also trigger a lowercase response for consistency
       respondToUser(label.toLowerCase());
     }
 
-    function respondToUser(input) { // input is already lowercased here
+    function respondToUser(input) {
       const responses = {
         'membership': "🏖️ Learn more or become a member here: <a href='https://vacationvaultclub.com/join-now' target='_blank'>Join Now</a>.",
         'contact': "📞 Reach our team here: <a href='https://vacationvaultclub.com/Contact' target='_blank'>Contact Us</a>.",
@@ -231,12 +229,12 @@
         'fee refund': "💳 Membership fees are non-refundable.",
         'quote': () => {
           userStage = 'quote_name';
-          formData = {};
+          formData = {}; // Reset formData for a new flow
           appendMessage("💌 I’d love to help you get a quote! Let's start with your full name:", 'bot');
         },
         'other': () => {
           userStage = 'other_contact_preference';
-          formData = {};
+          formData = {}; // Reset formData for a new flow
           appendMessage("📩 Sure! Would you prefer we contact you by email or phone? (Type 'Email' or 'Phone')", 'bot');
         },
         'default': "🤔 Hmm, I'm not sure I understood that. Try typing words like 'Membership' or 'Insurance' below to help me assist you!"
@@ -251,80 +249,103 @@
       }
     }
 
-    function handleFormFlow(message) { // message is already lowercased here
+    function handleFormFlow(message) {
       switch (userStage) {
         case 'quote_name':
-          // You might want to store names with proper casing, not lowercase.
-          // For now, storing as-is (lowercase from input) or consider message.toLowerCase() for comparison.
-          // For user-facing display or backend storage, you might want to capitalize names.
-          // Example: formData.name = message.split(' ').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
-          formData.name = message; // Stores the lowercase name
+          formData.name = message;
           userStage = 'quote_email';
           appendMessage("📧 Great! What is the best email to send your quote to?", 'bot');
           break;
         case 'quote_email':
-          formData.email = message; // Stores the lowercase email
+          formData.email = message;
           userStage = 'quote_destination';
           appendMessage("📍 What's the destination?", 'bot');
           break;
         case 'quote_destination':
-          formData.destination = message; // Stores the lowercase destination
+          formData.destination = message;
           userStage = 'quote_dates';
           appendMessage("📅 What dates are you planning to travel?", 'bot');
           break;
         case 'quote_dates':
-          formData.dates = message; // Stores the lowercase dates
+          formData.dates = message;
           userStage = 'quote_flex';
           appendMessage("🌀 Are your dates flexible (day before or after)?", 'bot');
           break;
         case 'quote_flex':
-          // Compare 'yes' or 'no' case-insensitively, store as-is
           formData.flexible = message;
           userStage = 'quote_party';
           appendMessage("👨‍👩‍👧‍👦 How many people in your party?", 'bot');
           break;
         case 'quote_party':
-          formData.partySize = message; // Stores the lowercase party size
+          formData.partySize = message;
           userStage = 'quote_ada';
           appendMessage("♿ Do you need ADA accessible services?", 'bot');
           break;
         case 'quote_ada':
-          // Compare 'yes' or 'no' case-insensitively, store as-is
           formData.ada = message;
           userStage = 'quote_flight';
           appendMessage("✈️ Do you need flights included?", 'bot');
           break;
         case 'quote_flight':
-          // Compare 'yes' or 'no' case-insensitively, store as-is
           formData.flight = message;
-          userStage = 'quote_car';
-          appendMessage("🚗 Do you need a rental car?", 'bot');
+          userStage = 'quote_rental';
+          appendMessage("🚗 Do you need a car rental?", 'bot');
           break;
-        case 'quote_car':
-          // Compare 'yes' or 'no' case-insensitively, store as-is
+        case 'quote_rental':
           formData.rental = message;
           userStage = 'quote_activities';
           appendMessage("🏝️ Any excursions or activities you'd like to include?", 'bot');
           break;
         case 'quote_activities':
-          formData.activities = message; // Stores the lowercase activities
+          formData.activities = message;
+
+          // Prepare FormData for Formspree
+          const quoteData = new FormData();
+          // Formspree automatically adds a timestamp, so no need for a manual one.
+          quoteData.append('Name', formData.name || '');
+          quoteData.append('Email', formData.email || '');
+          quoteData.append('Destination', formData.destination || '');
+          quoteData.append('Dates', formData.dates || '');
+          quoteData.append('Flexible', formData.flexible || '');
+          quoteData.append('Party Size', formData.partySize || '');
+          quoteData.append('ADA', formData.ada || '');
+          quoteData.append('Flight', formData.flight || '');
+          quoteData.append('Car Rental', formData.rental || ''); // Ensure consistent naming
+          quoteData.append('Activities', formData.activities || '');
+          // Explicitly send empty for 'Other' flow fields
+          quoteData.append('Contact Preference', '');
+          quoteData.append('Phone Number', '');
+          quoteData.append('Call Time', '');
+          quoteData.append('Question', '');
+
+
           fetch(FORM_ENDPOINT, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-            body: new URLSearchParams(formData).toString()
-          });
-          appendMessage("📬 Great! Your quote will be sent to your email shortly!", 'bot');
+           method: 'POST',
+           body: quoteData, // FormData object, no explicit 'Content-Type' header needed
+           mode: 'no-cors' // Use 'no-cors' mode to bypass CORS preflight and CSP issues
+         })
+         .then(response => {
+            // In 'no-cors' mode, response.ok will always be true and status will be 0.
+            // We can't actually read the response to confirm success directly.
+            // The fact that it doesn't throw a network error is the success indicator.
+            appendMessage("📬 Great! Your quote will be sent to your email shortly!", 'bot');
+            console.log('Formspree submission sent (no-cors mode). Check Formspree dashboard.');
+         })
+         .catch(error => {
+            appendMessage("❌ There was a network error submitting your quote. Please check your connection.", 'bot');
+            console.error('Network error during form submission:', error);
+         });
+
           userStage = null;
           break;
 
         case 'other_contact_preference':
-          // 'message' is already lowercased here
           if (message === 'email') {
-            formData.contactPreference = 'Email'; // Storing 'Email' with initial cap for consistency
+            formData.contactPreference = 'Email';
             userStage = 'other_question_email';
             appendMessage("📝 Sure! What questions may I relay to our Vault team? Please include your name and your email address in your message.", 'bot');
           } else if (message === 'phone') {
-            formData.contactPreference = 'Phone'; // Storing 'Phone' with initial cap for consistency
+            formData.contactPreference = 'Phone';
             userStage = 'other_phone_number';
             appendMessage("📱 What's the best phone number to reach you?", 'bot');
           } else {
@@ -333,36 +354,91 @@
           break;
 
         case 'other_phone_number':
-          formData.phoneNumber = message; // Stores the lowercase phone number
+          formData.phoneNumber = message;
           userStage = 'other_call_time';
           appendMessage("⏰ What’s the best time to call you?", 'bot');
           break;
 
         case 'other_call_time':
-          formData.callTime = message; // Stores the lowercase call time
+          formData.callTime = message;
           userStage = 'other_question_phone';
           appendMessage("📝 Please describe your question. You can also include your name if you haven't already.", 'bot');
           break;
 
         case 'other_question_email':
-          formData.question = message; // Stores the lowercase question
+          formData.question = message;
+
+          // Prepare FormData for Formspree
+          const otherEmailData = new FormData();
+          // Explicitly send empty for 'Quote' flow fields
+          otherEmailData.append('Name', '');
+          otherEmailData.append('Email', '');
+          otherEmailData.append('Destination', '');
+          otherEmailData.append('Dates', '');
+          otherEmailData.append('Flexible', '');
+          otherEmailData.append('Party Size', '');
+          otherEmailData.append('ADA', '');
+          otherEmailData.append('Flight', '');
+          otherEmailData.append('Car Rental', '');
+          otherEmailData.append('Activities', '');
+          // 'Other' flow specific fields
+          otherEmailData.append('Contact Preference', formData.contactPreference || '');
+          otherEmailData.append('Phone Number', ''); // Not collected in this specific path
+          otherEmailData.append('Call Time', '');    // Not collected in this specific path
+          otherEmailData.append('Question', formData.question || '');
+
           fetch(FORM_ENDPOINT, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-            body: new URLSearchParams(formData).toString()
-          });
-          appendMessage("📬 Thanks! A Vault representative will follow up shortly by email.", 'bot');
+          method: 'POST',
+          body: otherEmailData, // FormData object
+          mode: 'no-cors' // Use 'no-cors' mode
+        })
+        .then(response => {
+            appendMessage("📬 Thanks! A Vault representative will follow up shortly by email.", 'bot');
+            console.log('Formspree submission sent (no-cors mode). Check Formspree dashboard.');
+        })
+        .catch(error => {
+            appendMessage("❌ There was a network error submitting your request. Please check your connection.", 'bot');
+            console.error('Network error during form submission:', error);
+        });
+
           userStage = null;
           break;
 
         case 'other_question_phone':
-          formData.question = message; // Stores the lowercase question
+          formData.question = message;
+
+          // Prepare FormData for Formspree
+          const otherPhoneData = new FormData();
+          // Explicitly send empty for 'Quote' flow fields
+          otherPhoneData.append('Name', '');
+          otherPhoneData.append('Email', '');
+          otherPhoneData.append('Destination', '');
+          otherPhoneData.append('Dates', '');
+          otherPhoneData.append('Flexible', '');
+          otherPhoneData.append('Party Size', '');
+          otherPhoneData.append('ADA', '');
+          otherPhoneData.append('Flight', '');
+          otherPhoneData.append('Car Rental', '');
+          otherPhoneData.append('Activities', '');
+          // 'Other' flow specific fields
+          otherPhoneData.append('Contact Preference', formData.contactPreference || '');
+          otherPhoneData.append('Phone Number', formData.phoneNumber || '');
+          otherPhoneData.append('Call Time', formData.callTime || '');
+          otherPhoneData.append('Question', formData.question || '');
+
           fetch(FORM_ENDPOINT, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-            body: new URLSearchParams(formData).toString()
+            body: otherPhoneData, // FormData object
+            mode: 'no-cors' // Use 'no-cors' mode
+          })
+          .then(response => {
+            appendMessage("📬 Thanks! A Vault representative will follow up shortly by phone.", 'bot');
+            console.log('Formspree submission sent (no-cors mode). Check Formspree dashboard.');
+          })
+          .catch(error => {
+            appendMessage("❌ There was a network error submitting your request. Please check your connection.", 'bot');
+            console.error('Network error during form submission:', error);
           });
-          appendMessage("📬 Thanks! A Vault representative will follow up shortly by phone.", 'bot');
           userStage = null;
           break;
       }
@@ -372,6 +448,6 @@
       const chatbotContainer = document.getElementById('chatbot-container');
       chatbotContainer.classList.toggle('minimized');
     }
-  </script>
+</script>
 </body>
 </html>
